@@ -1,4 +1,3 @@
-# love
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -131,11 +130,15 @@
 
   .buttons {
     display: flex;
-    gap: 18px;
+    gap: 14px;
     justify-content: center;
-    margin-top: 8px;
+    align-items: center;
+    margin: 8px auto 0;
     position: relative;
-    height: 56px;
+    width: 100%;
+    max-width: 360px;
+    height: 78px;
+    overflow: hidden;
   }
   button {
     font-family: 'Nunito', sans-serif;
@@ -164,20 +167,23 @@
   }
 
   #noBtn {
+    transform: translateY(-45px);
     background: #fff;
     color: #ff6f91;
     border: 2px solid #ff6f91;
-    position: fixed;
-    left: calc(50% + 60px);
+    position: absolute;
+    left: 58%;
     top: 50%;
-    z-index: 20;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    white-space: nowrap;
   }
 
   .yes-size-1 { font-size: 1.05rem; padding: 12px 26px; }
   .yes-size-2 { font-size: 1.25rem; padding: 15px 32px; }
   .yes-size-3 { font-size: 1.5rem; padding: 18px 40px; }
   .yes-size-4 { font-size: 1.85rem; padding: 22px 50px; }
-  .yes-size-5 { font-size: 2.2rem; padding: 26px 60px; }
+  .yes-size-5 { font-size: 2rem; padding: 20px 34px; }
 
   .nudge-msg {
     font-size: 0.85rem;
@@ -254,6 +260,25 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  @media (max-width: 480px) {
+    .container {
+      width: calc(100% - 24px);
+      padding: 30px 18px 26px;
+    }
+    h1 { font-size: 1.5rem; }
+    .sub { font-size: 0.85rem; }
+    .buttons {
+      max-width: 320px;
+      height: 82px;
+      gap: 8px;
+    }
+    .yes-size-4 { font-size: 1.55rem; padding: 16px 24px; }
+    .yes-size-5 { font-size: 1.7rem; padding: 17px 26px; }
+    #noBtn {
+      font-size: 0.95rem;
+      padding: 10px 20px;
+    }
   }
 </style>
 </head>
@@ -350,25 +375,44 @@
   ];
 
   function moveNoFarAway() {
+    // Keep the No button inside the buttons area.
+    // This prevents it from leaving the frame or blocking other page content.
+    const zone = document.querySelector('.buttons');
+    const zoneRect = zone.getBoundingClientRect();
     const btnRect = noBtn.getBoundingClientRect();
     const yesRect = yesBtn.getBoundingClientRect();
-    const margin = 20;
-    const maxX = window.innerWidth - btnRect.width - margin;
-    const maxY = window.innerHeight - btnRect.height - margin;
-    const minDistance = Math.min(window.innerWidth, window.innerHeight) * 0.35;
 
-    let newX, newY, dist, attempts = 0;
+    const padding = 6;
+    const halfW = btnRect.width / 2;
+    const halfH = btnRect.height / 2;
+
+    const minX = halfW + padding;
+    const maxX = zoneRect.width - halfW - padding;
+    const minY = halfH + padding;
+    const maxY = zoneRect.height - halfH - padding;
+
+    if (maxX <= minX || maxY <= minY) return;
+
+    const yesCenterX = yesRect.left - zoneRect.left + yesRect.width / 2;
+    const yesCenterY = yesRect.top - zoneRect.top + yesRect.height / 2;
+
+    let x, y, dist;
+    let attempts = 0;
+    const minDistance = Math.min(zoneRect.width, zoneRect.height) * 0.30;
+
     do {
-      newX = margin + Math.random() * (maxX - margin);
-      newY = margin + Math.random() * (maxY - margin);
-      const dx = (newX + btnRect.width / 2) - (yesRect.left + yesRect.width / 2);
-      const dy = (newY + btnRect.height / 2) - (yesRect.top + yesRect.height / 2);
+      x = minX + Math.random() * (maxX - minX);
+      y = minY + Math.random() * (maxY - minY);
+
+      const dx = x - yesCenterX;
+      const dy = y - yesCenterY;
       dist = Math.sqrt(dx * dx + dy * dy);
       attempts++;
-    } while (dist < minDistance && attempts < 20);
+    } while (dist < minDistance && attempts < 30);
 
-    noBtn.style.left = newX + 'px';
-    noBtn.style.top = newY + 'px';
+    noBtn.style.left = x + 'px';
+    noBtn.style.top = y + 'px';
+    noBtn.style.transform = 'translate(-50%, -50%)';
   }
 
   function tryYes() {
@@ -383,17 +427,30 @@
 
   function dodge() {
     dodgeCount++;
-    // Text is updated BEFORE measuring/positioning so the button's
-    // width reflects the new (often longer) excuse text. This fixes
-    // the bug where the final, longest excuse could get pushed
-    // off-screen because the position was calculated using the
-    // previous, shorter text's width.
-    noBtn.textContent = noExcuses[Math.min(dodgeCount, noExcuses.length - 1)];
     moveNoFarAway();
+    noBtn.textContent = noExcuses[Math.min(dodgeCount, noExcuses.length - 1)];
     const growLevel = Math.min(dodgeCount, 5);
     yesBtn.className = 'yes-size-' + (growLevel === 0 ? 1 : growLevel) + (yesUnlocked ? '' : ' locked');
 
     if (dodgeCount >= noExcuses.length - 1 && !yesUnlocked) {
+      // Final No button: place it above the bear image / scene.
+      const scene = document.querySelector('.scene');
+      const sceneRect = scene.getBoundingClientRect();
+      const btnRect = noBtn.getBoundingClientRect();
+
+      noBtn.style.left = Math.max(
+        10,
+        Math.min(
+          window.innerWidth - btnRect.width - 10,
+          sceneRect.left + (sceneRect.width - btnRect.width) / 2
+        )
+      ) + 'px';
+
+      noBtn.style.top = Math.max(
+        10,
+        sceneRect.top - btnRect.height - 12
+      ) + 'px';
+
       yesUnlocked = true;
       yesBtn.classList.remove('locked');
       document.getElementById('tapHint').textContent = "okay okay, the Yes button is all yours now 💍";
